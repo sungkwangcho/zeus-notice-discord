@@ -1,6 +1,7 @@
 import os
 import asyncio
 import tempfile
+import traceback
 import requests
 import discord
 
@@ -40,7 +41,7 @@ def get_notice(notice_id):
 
     title = soup.title.get_text(strip=True)
 
-    # 존재하지 않는 공지는 기본 제목으로 반환됨
+    # 존재하지 않는 공지는 기본 제목으로 반환
     if title == "공지사항 | 제우스: 오만의 신":
         return None
 
@@ -166,11 +167,19 @@ async def play_voice_alert(text):
 
             voice_client = await channel.connect()
 
+            print(
+                "음성 채널 연결 성공"
+            )
+
             with tempfile.NamedTemporaryFile(
                 suffix=".mp3",
                 delete=False
             ) as temp_file:
                 audio_path = temp_file.name
+
+            print(
+                "TTS 파일 생성 시작"
+            )
 
             tts = gTTS(
                 text=text,
@@ -181,12 +190,25 @@ async def play_voice_alert(text):
                 audio_path
             )
 
+            print(
+                "TTS 파일 생성 완료:",
+                audio_path
+            )
+
             audio = discord.FFmpegPCMAudio(
                 audio_path
             )
 
+            print(
+                "FFmpeg 오디오 생성 완료"
+            )
+
             voice_client.play(
                 audio
+            )
+
+            print(
+                "음성 재생 시작"
             )
 
             while voice_client.is_playing():
@@ -198,16 +220,41 @@ async def play_voice_alert(text):
 
         except Exception as e:
             print(
-                "음성 알림 오류:",
-                str(e)
+                "음성 알림 오류 타입:",
+                type(e).__name__
             )
+
+            print(
+                "음성 알림 오류 내용:",
+                repr(e)
+            )
+
+            traceback.print_exc()
 
         finally:
             if voice_client is not None:
-                await voice_client.disconnect()
+                try:
+                    await voice_client.disconnect()
+                    print(
+                        "음성 채널 퇴장 완료"
+                    )
+                except Exception as e:
+                    print(
+                        "음성 채널 퇴장 오류:",
+                        repr(e)
+                    )
 
             if audio_path and os.path.exists(audio_path):
-                os.remove(audio_path)
+                try:
+                    os.remove(audio_path)
+                    print(
+                        "임시 음성 파일 삭제 완료"
+                    )
+                except Exception as e:
+                    print(
+                        "임시 파일 삭제 오류:",
+                        repr(e)
+                    )
 
             await client.close()
 
@@ -228,7 +275,7 @@ def send_voice_alert(notice):
     )
 
 
-# 마지막으로 확인한 실제 공지 번호
+# 마지막 확인 공지 번호 읽기
 with open(
     "last_notice.txt",
     "r",
@@ -270,12 +317,13 @@ for notice_id in range(
 if new_notices:
 
     for notice in new_notices:
-        # Discord 채팅 알림
+
+        # 텍스트 채팅 알림
         send_discord(
             notice
         )
 
-        # Discord 음성 알림
+        # 음성 알림
         send_voice_alert(
             notice
         )
