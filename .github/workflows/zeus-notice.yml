@@ -1,18 +1,18 @@
 name: Zeus Notice Monitor
 
 on:
+  push:
+    branches:
+      - master
+
   schedule:
-    # 매시 2, 7, 12 ... 57분 실행
-    # 정각/5분 단위 GitHub Actions 혼잡 회피
     - cron: "2,7,12,17,22,27,32,37,42,47,52,57 * * * *"
 
-  # 수동 실행도 가능
   workflow_dispatch:
 
 permissions:
   contents: write
 
-# 이전 실행이 아직 끝나지 않았으면 중복 실행 방지
 concurrency:
   group: zeus-notice-monitor
   cancel-in-progress: false
@@ -63,8 +63,6 @@ jobs:
 
           if ! git diff --cached --quiet; then
             git commit -m "Update last Zeus notice"
-
-            # 다른 실행과 push 충돌 방지
             git pull --rebase origin master
             git push origin master
           else
