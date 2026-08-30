@@ -24,11 +24,15 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install requests beautifulsoup4
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg
+          pip install requests beautifulsoup4 discord.py PyNaCl gTTS
 
       - name: Run notice checker
         env:
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          DISCORD_BOT_TOKEN: ${{ secrets.DISCORD_BOT_TOKEN }}
+          DISCORD_VOICE_CHANNEL_ID: ${{ secrets.DISCORD_VOICE_CHANNEL_ID }}
         run: |
           python check_notice.py
 
