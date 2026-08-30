@@ -1,12 +1,28 @@
-name: Zeus Notice Test
+name: Zeus Notice Monitor
 
 on:
+  schedule:
+    - cron: "*/5 * * * *"
+
   workflow_dispatch:
 
 jobs:
-  test:
+  check-notice:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Test GitHub Actions
-        run: echo "Zeus Notice Bot Action 정상 실행"
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          pip install requests beautifulsoup4
+
+      - name: Run notice checker
+        run: |
+          python check_notice.py
