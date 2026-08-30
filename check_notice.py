@@ -1,4 +1,5 @@
 import requests
+from bs4 import BeautifulSoup
 
 BASE_URL = "https://zeus.com2us.com/news/notice"
 
@@ -6,7 +7,6 @@ headers = {
     "User-Agent": "Mozilla/5.0"
 }
 
-# 테스트용: 최근 번호 구간 확인
 for notice_id in range(2650, 2635, -1):
 
     url = f"{BASE_URL}/{notice_id}"
@@ -17,8 +17,10 @@ for notice_id in range(2650, 2635, -1):
         timeout=10
     )
 
-    print(
-        notice_id,
-        response.status_code,
-        len(response.text)
-    )
+    soup = BeautifulSoup(response.text, "html.parser")
+
+    title = soup.title.get_text(strip=True) if soup.title else ""
+
+    print("공지번호:", notice_id)
+    print("TITLE:", title)
+    print("-" * 50)
