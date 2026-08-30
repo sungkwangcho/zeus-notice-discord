@@ -49,24 +49,61 @@ def get_notice(notice_id):
 
 def send_discord(notice):
 
-    message = {
-        "content":
-            f"🚨 **제우스 신규 공지**\n\n"
-            f"**{notice['title']}**\n\n"
-            f"📢 {notice['url']}"
+    title = notice["title"]
+
+    if "긴급" in title or "점검" in title:
+        icon = "🚨"
+        category = "긴급 공지"
+        voice_text = f"제우스 긴급 공지가 등록되었습니다. {title}"
+
+    elif "업데이트" in title or "패치" in title:
+        icon = "🔧"
+        category = "업데이트"
+        voice_text = f"제우스 업데이트 공지가 등록되었습니다. {title}"
+
+    elif "이벤트" in title:
+        icon = "🎁"
+        category = "이벤트"
+        voice_text = f"제우스 이벤트 공지가 등록되었습니다. {title}"
+
+    else:
+        icon = "📢"
+        category = "일반 공지"
+        voice_text = f"제우스 새로운 공지가 등록되었습니다. {title}"
+
+    payload = {
+        "username": "ZEUS Notice Bot",
+        "content": voice_text,
+        "embeds": [
+            {
+                "title": f"{icon} 제우스 신규 공지",
+                "description": f"**{title}**",
+                "fields": [
+                    {
+                        "name": "분류",
+                        "value": category,
+                        "inline": True
+                    },
+                    {
+                        "name": "공지번호",
+                        "value": str(notice["id"]),
+                        "inline": True
+                    }
+                ],
+                "footer": {
+                    "text": "ZEUS : 오만의 신"
+                }
+            }
+        ]
     }
 
     response = requests.post(
         DISCORD_WEBHOOK_URL,
-        json=message,
+        json=payload,
         timeout=10
     )
 
-    print(
-        "Discord 응답:",
-        response.status_code
-    )
-
+    print("Discord 응답:", response.status_code)
 
 # 마지막으로 확인한 실제 공지 번호
 with open(
