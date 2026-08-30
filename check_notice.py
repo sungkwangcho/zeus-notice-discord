@@ -22,14 +22,27 @@ HEADERS = {
 }
 
 
+# =========================================================
+# 제우스 공지 조회
+# =========================================================
 def get_notice(notice_id):
     url = f"{BASE_URL}/{notice_id}"
 
-    response = requests.get(
-        url,
-        headers=HEADERS,
-        timeout=10
-    )
+    try:
+        response = requests.get(
+            url,
+            headers=HEADERS,
+            timeout=10
+        )
+
+        response.raise_for_status()
+
+    except requests.RequestException as e:
+        print(
+            f"공지 조회 실패 [{notice_id}]:",
+            repr(e)
+        )
+        return None
 
     soup = BeautifulSoup(
         response.text,
@@ -39,7 +52,9 @@ def get_notice(notice_id):
     if not soup.title:
         return None
 
-    title = soup.title.get_text(strip=True)
+    title = soup.title.get_text(
+        strip=True
+    )
 
     # 존재하지 않는 공지는 기본 제목으로 반환
     if title == "공지사항 | 제우스: 오만의 신":
@@ -58,105 +73,171 @@ def get_notice(notice_id):
     }
 
 
+# =========================================================
+# 공지 유형 분류
+# =========================================================
 def get_notice_type(title):
+
     if "긴급" in title or "점검" in title:
+
         return {
             "icon": "🚨",
             "category": "긴급 공지",
-            "voice_text": "제우스 긴급 공지가 등록되었습니다. 채팅을 확인해주세요."
+            "voice_text":
+                "제우스 긴급 공지가 등록되었습니다. 채팅을 확인해주세요."
         }
 
     elif "업데이트" in title or "패치" in title:
+
         return {
             "icon": "🔧",
             "category": "업데이트",
-            "voice_text": "제우스 업데이트 공지가 등록되었습니다. 채팅을 확인해주세요."
+            "voice_text":
+                "제우스 업데이트 공지가 등록되었습니다. 채팅을 확인해주세요."
         }
 
     elif "이벤트" in title:
+
         return {
             "icon": "🎁",
             "category": "이벤트",
-            "voice_text": "제우스 이벤트 공지가 등록되었습니다. 채팅을 확인해주세요."
+            "voice_text":
+                "제우스 이벤트 공지가 등록되었습니다. 채팅을 확인해주세요."
         }
 
     else:
+
         return {
             "icon": "📢",
             "category": "일반 공지",
-            "voice_text": "제우스 신규 공지가 등록되었습니다. 채팅을 확인해주세요."
+            "voice_text":
+                "제우스 신규 공지가 등록되었습니다. 채팅을 확인해주세요."
         }
 
 
+# =========================================================
+# Discord 채팅 알림
+# =========================================================
 def send_discord(notice):
+
     notice_type = get_notice_type(
         notice["title"]
     )
 
     payload = {
+
         "username": "ZEUS Notice Bot",
 
-        # 나중에 음성봇이 읽을 본문
+        # Discord 메시지 본문
         "content": notice_type["voice_text"],
 
-        # 화면에 보여줄 공지 카드
+        # 공지 Embed 카드
         "embeds": [
             {
-                "title": f'{notice_type["icon"]} 제우스 신규 공지',
-                "description": f'**{notice["title"]}**',
+                "title":
+                    f'{notice_type["icon"]} 제우스 신규 공지',
+
+                "description":
+                    f'**{notice["title"]}**',
+
                 "fields": [
                     {
                         "name": "분류",
-                        "value": notice_type["category"],
+                        "value":
+                            notice_type["category"],
                         "inline": True
                     },
                     {
                         "name": "공지번호",
-                        "value": str(notice["id"]),
+                        "value":
+                            str(notice["id"]),
                         "inline": True
                     }
                 ],
+
                 "footer": {
                     "text": "ZEUS : 오만의 신"
                 }
             }
         ],
 
-        # 맨 아래 공지 바로가기 버튼
+        # 공지 바로가기 버튼
         "components": [
             {
                 "type": 1,
+
                 "components": [
                     {
                         "type": 2,
+
+                        # 5 = Link Button
                         "style": 5,
-                        "label": "📢 공지 바로가기",
-                        "url": notice["url"]
+
+                        "label":
+                            "공지 바로가기",
+
+                        "emoji": {
+                            "name": "📢"
+                        },
+
+                        "url":
+                            notice["url"]
                     }
                 ]
             }
         ]
     }
 
-    response = requests.post(
-        DISCORD_WEBHOOK_URL,
-        json=payload,
-        timeout=10
-    )
+    try:
 
-    print(
-        "Discord 응답:",
-        response.status_code
-    )
+        response = requests.post(
 
-    if response.status_code not in (200, 204):
+            DISCORD_WEBHOOK_URL,
+
+            # ★ Discord Webhook Component 사용
+            params={
+                "with_components": "true"
+            },
+
+            json=payload,
+
+            timeout=10
+        )
+
         print(
-            "Discord 전송 오류:",
-            response.text
+            "Discord 응답:",
+            response.status_code
+        )
+
+        if response.status_code not in (
+            200,
+            204
+        ):
+
+            print(
+                "Discord 전송 오류:",
+                response.text
+            )
+
+        else:
+
+            print(
+                "Discord 채팅 알림 전송 완료"
+            )
+
+    except requests.RequestException as e:
+
+        print(
+            "Discord Webhook 오류:",
+            repr(e)
         )
 
 
+# =========================================================
+# Discord 음성 알림
+# =========================================================
 async def play_voice_alert(text):
+
     intents = discord.Intents.default()
 
     client = discord.Client(
@@ -165,6 +246,7 @@ async def play_voice_alert(text):
 
     @client.event
     async def on_ready():
+
         print(
             "Voice Bot 로그인:",
             client.user
@@ -175,16 +257,20 @@ async def play_voice_alert(text):
         )
 
         if channel is None:
+
             print(
                 "음성 채널을 찾지 못했습니다."
             )
+
             await client.close()
+
             return
 
         voice_client = None
         audio_path = None
 
         try:
+
             print(
                 "음성 채널 접속:",
                 channel.name
@@ -196,16 +282,19 @@ async def play_voice_alert(text):
                 "음성 채널 연결 성공"
             )
 
+            # 임시 mp3 생성
             with tempfile.NamedTemporaryFile(
                 suffix=".mp3",
                 delete=False
             ) as temp_file:
+
                 audio_path = temp_file.name
 
             print(
                 "TTS 파일 생성 시작"
             )
 
+            # 한국어 TTS
             tts = gTTS(
                 text=text,
                 lang="ko"
@@ -220,6 +309,7 @@ async def play_voice_alert(text):
                 audio_path
             )
 
+            # FFmpeg 음성 재생
             audio = discord.FFmpegPCMAudio(
                 audio_path
             )
@@ -236,14 +326,19 @@ async def play_voice_alert(text):
                 "음성 재생 시작"
             )
 
+            # 음성 재생이 끝날 때까지 대기
             while voice_client.is_playing():
-                await asyncio.sleep(0.5)
+
+                await asyncio.sleep(
+                    0.5
+                )
 
             print(
                 "음성 알림 재생 완료"
             )
 
         except Exception as e:
+
             print(
                 "음성 알림 오류 타입:",
                 type(e).__name__
@@ -257,8 +352,12 @@ async def play_voice_alert(text):
             traceback.print_exc()
 
         finally:
+
+            # 음성채널 퇴장
             if voice_client is not None:
+
                 try:
+
                     await voice_client.disconnect()
 
                     print(
@@ -266,20 +365,32 @@ async def play_voice_alert(text):
                     )
 
                 except Exception as e:
+
                     print(
                         "음성 채널 퇴장 오류:",
                         repr(e)
                     )
 
-            if audio_path and os.path.exists(audio_path):
+            # 임시 mp3 파일 삭제
+            if (
+                audio_path
+                and os.path.exists(
+                    audio_path
+                )
+            ):
+
                 try:
-                    os.remove(audio_path)
+
+                    os.remove(
+                        audio_path
+                    )
 
                     print(
                         "임시 음성 파일 삭제 완료"
                     )
 
                 except Exception as e:
+
                     print(
                         "임시 파일 삭제 오류:",
                         repr(e)
@@ -292,19 +403,27 @@ async def play_voice_alert(text):
     )
 
 
+# =========================================================
+# 음성 알림 실행
+# =========================================================
 def send_voice_alert(notice):
+
     notice_type = get_notice_type(
         notice["title"]
     )
 
     asyncio.run(
         play_voice_alert(
-            notice_type["voice_text"]
+            notice_type[
+                "voice_text"
+            ]
         )
     )
 
 
+# =========================================================
 # 마지막 확인 공지 번호 읽기
+# =========================================================
 with open(
     "last_notice.txt",
     "r",
@@ -322,10 +441,13 @@ print(
 )
 
 
+# =========================================================
+# 신규 공지 확인
+# =========================================================
 new_notices = []
 
 
-# 이후 번호 30개 확인
+# 마지막 번호 이후 30개 검색
 for notice_id in range(
     last_notice_id + 1,
     last_notice_id + 31
@@ -348,28 +470,48 @@ for notice_id in range(
         )
 
 
-# 신규 공지가 있으면 채팅 + 음성 알림
+# =========================================================
+# 신규 공지 처리
+# =========================================================
 if new_notices:
+
+    # 번호순 정렬
+    new_notices.sort(
+        key=lambda notice:
+            notice["id"]
+    )
 
     for notice in new_notices:
 
-        # Discord 채팅 알림
+        print(
+            "공지 알림 처리 시작:",
+            notice["id"]
+        )
+
+        # Discord 채팅
         send_discord(
             notice
         )
 
-        # Discord 음성 알림
+        # Discord 음성
         send_voice_alert(
             notice
         )
 
+        print(
+            "공지 알림 처리 완료:",
+            notice["id"]
+        )
 
+
+    # 가장 최신 번호
     latest_id = max(
         notice["id"]
         for notice in new_notices
     )
 
 
+    # 마지막 공지 번호 저장
     with open(
         "last_notice.txt",
         "w",
