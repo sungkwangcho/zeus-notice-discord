@@ -2,31 +2,47 @@ name: Zeus Notice Monitor
 
 on:
   schedule:
-    - cron: "*/5 * * * *"
+    # 매시 2, 7, 12 ... 57분 실행
+    # 정각/5분 단위 GitHub Actions 혼잡 회피
+    - cron: "2,7,12,17,22,27,32,37,42,47,52,57 * * * *"
 
+  # 수동 실행도 가능
   workflow_dispatch:
 
 permissions:
   contents: write
 
+# 이전 실행이 아직 끝나지 않았으면 중복 실행 방지
+concurrency:
+  group: zeus-notice-monitor
+  cancel-in-progress: false
+
 jobs:
   check-notice:
     runs-on: ubuntu-latest
 
+    timeout-minutes: 10
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+          cache: "pip"
 
-      - name: Install dependencies
+      - name: Install system dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y ffmpeg
-          pip install --upgrade pip
+
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
           pip install requests beautifulsoup4 discord.py PyNaCl gTTS davey
 
       - name: Run notice checker
@@ -38,6 +54,7 @@ jobs:
           python check_notice.py
 
       - name: Save last notice
+        if: success()
         run: |
           git config user.name "zeus-notice-bot"
           git config user.email "actions@github.com"
@@ -46,7 +63,10 @@ jobs:
 
           if ! git diff --cached --quiet; then
             git commit -m "Update last Zeus notice"
-            git push
+
+            # 다른 실행과 push 충돌 방지
+            git pull --rebase origin master
+            git push origin master
           else
             echo "변경된 공지 번호 없음"
           fi
