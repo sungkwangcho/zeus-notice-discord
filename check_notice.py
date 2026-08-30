@@ -1,15 +1,19 @@
-import os
 import requests
 
-webhook_url = os.environ["DISCORD_WEBHOOK_URL"]
+url = "https://zeus.com2us.com/news/notice"
 
-message = {
-    "content": "🔔 제우스 공지 봇 테스트 알림입니다."
+headers = {
+    "User-Agent": "Mozilla/5.0"
 }
 
-response = requests.post(
-    webhook_url,
-    json=message
+response = requests.get(
+    url,
+    headers=headers,
+    timeout=10
 )
 
-print("Discord 응답 코드:", response.status_code)
+print("HTTP 상태코드:", response.status_code)
+print("응답 길이:", len(response.text))
+
+print("----- 응답 일부 -----")
+print(response.text[:1000])
