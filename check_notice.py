@@ -95,7 +95,11 @@ def send_discord(notice):
 
     payload = {
         "username": "ZEUS Notice Bot",
+
+        # 나중에 음성봇이 읽을 본문
         "content": notice_type["voice_text"],
+
+        # 화면에 보여줄 공지 카드
         "embeds": [
             {
                 "title": f'{notice_type["icon"]} 제우스 신규 공지',
@@ -116,6 +120,21 @@ def send_discord(notice):
                     "text": "ZEUS : 오만의 신"
                 }
             }
+        ],
+
+        # 맨 아래 공지 바로가기 버튼
+        "components": [
+            {
+                "type": 1,
+                "components": [
+                    {
+                        "type": 2,
+                        "style": 5,
+                        "label": "📢 공지 바로가기",
+                        "url": notice["url"]
+                    }
+                ]
+            }
         ]
     }
 
@@ -129,6 +148,12 @@ def send_discord(notice):
         "Discord 응답:",
         response.status_code
     )
+
+    if response.status_code not in (200, 204):
+        print(
+            "Discord 전송 오류:",
+            response.text
+        )
 
 
 async def play_voice_alert(text):
@@ -235,9 +260,11 @@ async def play_voice_alert(text):
             if voice_client is not None:
                 try:
                     await voice_client.disconnect()
+
                     print(
                         "음성 채널 퇴장 완료"
                     )
+
                 except Exception as e:
                     print(
                         "음성 채널 퇴장 오류:",
@@ -247,9 +274,11 @@ async def play_voice_alert(text):
             if audio_path and os.path.exists(audio_path):
                 try:
                     os.remove(audio_path)
+
                     print(
                         "임시 음성 파일 삭제 완료"
                     )
+
                 except Exception as e:
                     print(
                         "임시 파일 삭제 오류:",
@@ -281,27 +310,33 @@ with open(
     "r",
     encoding="utf-8"
 ) as f:
+
     last_notice_id = int(
         f.read().strip()
     )
+
 
 print(
     "마지막 공지 번호:",
     last_notice_id
 )
 
+
 new_notices = []
+
 
 # 이후 번호 30개 확인
 for notice_id in range(
     last_notice_id + 1,
     last_notice_id + 31
 ):
+
     notice = get_notice(
         notice_id
     )
 
     if notice:
+
         print(
             "신규 공지 발견:",
             notice["id"],
@@ -318,29 +353,33 @@ if new_notices:
 
     for notice in new_notices:
 
-        # 텍스트 채팅 알림
+        # Discord 채팅 알림
         send_discord(
             notice
         )
 
-        # 음성 알림
+        # Discord 음성 알림
         send_voice_alert(
             notice
         )
+
 
     latest_id = max(
         notice["id"]
         for notice in new_notices
     )
 
+
     with open(
         "last_notice.txt",
         "w",
         encoding="utf-8"
     ) as f:
+
         f.write(
             str(latest_id)
         )
+
 
     print(
         "마지막 공지 번호 갱신:",
@@ -348,6 +387,7 @@ if new_notices:
     )
 
 else:
+
     print(
         "신규 공지 없음"
     )
