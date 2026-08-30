@@ -24,5 +24,7 @@ jobs:
           pip install requests beautifulsoup4
 
       - name: Run notice checker
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
         run: |
           python check_notice.py
