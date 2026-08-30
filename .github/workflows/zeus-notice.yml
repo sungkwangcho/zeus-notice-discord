@@ -1,0 +1,12 @@
+name: Zeus Notice Test
+
+on:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Test GitHub Actions
+        run: echo "Zeus Notice Bot Action 정상 실행"
